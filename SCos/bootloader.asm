@@ -48,9 +48,13 @@ read_loop:
 switch_to_32bit:
     cli
     lgdt [gdt_descriptor]
+    
+    ; Clear interrupts and flush prefetch queue
     mov eax, cr0
-    or eax, 1
+    or eax, 0x1
     mov cr0, eax
+    
+    ; Far jump to reload CS with new GDT
     jmp CODE_SEG:init_32bit
 
 read_error:
@@ -75,6 +79,7 @@ done:
 
 [BITS 32]
 init_32bit:
+    ; Load data segment selector
     mov ax, DATA_SEG
     mov ds, ax
     mov ss, ax
@@ -82,23 +87,44 @@ init_32bit:
     mov fs, ax
     mov gs, ax
     
-    ; Set up stack in upper memory
-    mov ebp, 0x90000
-    mov esp, ebp
+    ; Set up stack in upper memory (well below kernel)
+    mov esp, 0x90000
+    mov ebp, esp
     
-    ; Jump to kernel entry point at 0x1000
+    ; Clear direction flag
+    cld
+    
+    ; Display "32-bit mode" message on screen
+    mov esi, 0xB8000
+    mov eax, 0x0F340F33  ; "32" in white
+    mov [esi], eax
+    
+    ; Jump to kernel entry point
     jmp KERNEL_OFFSET
 
+; Align GDT on word boundary
+align 4
 gdt_start:
+    ; Null descriptor
     dd 0x0, 0x0
 
 gdt_code:
-    dw 0xFFFF, 0x0000
-    db 0x00, 10011010b, 11001111b, 0x00
+    ; Code segment: base=0, limit=4GB, executable, readable
+    dw 0xFFFF    ; limit low
+    dw 0x0000    ; base low
+    db 0x00      ; base middle
+    db 10011010b ; access (present, ring 0, code, executable, readable)
+    db 11001111b ; flags (4KB pages, 32-bit) + limit high
+    db 0x00      ; base high
 
 gdt_data:
-    dw 0xFFFF, 0x0000
-    db 0x00, 10010010b, 11001111b, 0x00
+    ; Data segment: base=0, limit=4GB, writable
+    dw 0xFFFF    ; limit low
+    dw 0x0000    ; base low
+    db 0x00      ; base middle
+    db 10010010b ; access (present, ring 0, data, writable)
+    db 11001111b ; flags (4KB pages, 32-bit) + limit high
+    db 0x00      ; base high
 
 gdt_end:
 
