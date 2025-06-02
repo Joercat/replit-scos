@@ -86,12 +86,8 @@ init_32bit:
     mov ebp, 0x90000
     mov esp, ebp
     
-    ; Call kernel main function at 0x1000
-    call KERNEL_OFFSET
-    
-    ; If kernel returns, halt
-    cli
-    hlt
+    ; Jump to kernel entry point at 0x1000
+    jmp KERNEL_OFFSET
 
 gdt_start:
     dd 0x0, 0x0
