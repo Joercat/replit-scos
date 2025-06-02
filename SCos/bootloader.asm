@@ -40,6 +40,11 @@ read_loop:
     mov si, loaded_msg
     call print_string
 
+    ; Verify kernel was loaded correctly
+    mov bx, KERNEL_OFFSET
+    cmp word [bx], 0
+    je read_error
+
 switch_to_32bit:
     cli
     lgdt [gdt_descriptor]
@@ -76,9 +81,17 @@ init_32bit:
     mov es, ax
     mov fs, ax
     mov gs, ax
+    
+    ; Set up stack in upper memory
     mov ebp, 0x90000
     mov esp, ebp
-    jmp KERNEL_OFFSET
+    
+    ; Call kernel main function at 0x1000
+    call KERNEL_OFFSET
+    
+    ; If kernel returns, halt
+    cli
+    hlt
 
 gdt_start:
     dd 0x0, 0x0
