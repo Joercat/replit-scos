@@ -34,7 +34,7 @@ load_kernel:
     ; Load kernel one sector at a time for reliability
     mov bx, KERNEL_OFFSET   ; Load address
     mov cx, 2               ; Starting sector (sector 2)
-    mov bp, 4               ; Reduced to 2KB (4 sectors) for faster boot
+    mov bp, 24              ; Load 12KB (24 sectors) for full kernel
 
 read_loop:
     push bp                 ; Save sector count
@@ -240,5 +240,5 @@ gdt_loaded_msg db 'GDT loaded!', 13, 10, 0
 entering_pm_msg db 'Entering protected mode...', 13, 10, 0
 disk_error_msg db 'FATAL: Disk error!', 13, 10, 0
 
-times 1280 - ($ - $$) db 0
+times 510 - ($ - $$) db 0
 dw 0xAA55
