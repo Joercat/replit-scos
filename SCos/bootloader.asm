@@ -25,7 +25,7 @@ load_kernel:
     ; Load kernel one sector at a time for reliability
     mov bx, KERNEL_OFFSET   ; Load address
     mov cx, 2               ; Starting sector (sector 2)
-    mov bp, 24              ; Total sectors to read (12KB)
+    mov bp, 8               ; Total sectors to read (4KB) - reduced for testing
 
 read_loop:
     push bp                 ; Save sector count
@@ -33,13 +33,13 @@ read_loop:
     push bx                 ; Save current memory address
 
     ; Try reading with retry
-    mov di, 3               ; Retry count
+    mov di, 2               ; Reduced retry count to prevent hanging
 
 retry_read:
     mov ah, 0x02            ; Read sectors function
     mov al, 1               ; Read 1 sector at a time
     mov ch, 0               ; Cylinder 0
-    mov cl, [esp + 2]       ; Current sector from stack
+    mov cl, [sp + 2]        ; Current sector from stack (use sp in 16-bit mode)
     mov dh, 0               ; Head 0
     mov dl, [boot_drive]    ; Drive
     int 0x13
@@ -55,7 +55,7 @@ retry_read:
     jnz retry_read          ; Retry if count > 0
 
     ; All retries failed
-    add esp, 6              ; Clean up stack
+    add sp, 6               ; Clean up stack (use sp in 16-bit mode)
     jmp read_error
 
 read_success:
