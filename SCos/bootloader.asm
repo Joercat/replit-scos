@@ -40,11 +40,6 @@ read_loop:
     mov si, loaded_msg
     call print_string
 
-    ; Verify kernel was loaded correctly
-    mov bx, KERNEL_OFFSET
-    cmp word [bx], 0
-    je read_error
-
 switch_to_32bit:
     cli
     lgdt [gdt_descriptor]
@@ -93,11 +88,6 @@ init_32bit:
     
     ; Clear direction flag
     cld
-    
-    ; Display "32-bit mode" message on screen
-    mov esi, 0xB8000
-    mov eax, 0x0F340F33  ; "32" in white
-    mov [esi], eax
     
     ; Jump to kernel entry point
     jmp KERNEL_OFFSET
