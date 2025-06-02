@@ -3,7 +3,7 @@ modules = ["cpp-clang14"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["qemu_full"]
+packages = ["qemu_full", "nasm", "gcc-unwrapped", "binutils-unwrapped"]
 
 [unitTest]
 language = "python3"
