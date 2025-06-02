@@ -1,3 +1,6 @@
+` tags. I should pay close attention to preserving the original structure and indentation while incorporating all the changes from the edited snippet.
+
+```assembly
 [ORG 0x7C00]
 [BITS 16]
 
@@ -15,101 +18,65 @@ start:
 load_kernel:
     ; Save boot drive number that BIOS gave us
     mov [boot_drive], dl
-    
-    ; Reset disk system first with retries
-    mov cx, 3           ; Try 3 times
-reset_loop:
-    mov ah, 0x00
-    mov dl, [boot_drive]
-    int 0x13
-    jnc reset_ok
-    loop reset_loop
-    jmp disk_error
-    
-reset_ok:
-    ; Load kernel in smaller chunks to be more reliable
+
+    ; Load kernel in larger chunks - read 8 sectors at once
     mov bx, KERNEL_OFFSET   ; Load address
-    mov cx, 50              ; Total sectors to read
+    mov cx, 8               ; Read 8 sectors at a time (4KB chunks)
     mov dx, 2               ; Starting sector
-    
+    mov bp, 3               ; Total chunks to read (24 sectors = 12KB)
+
 read_loop:
-    push cx                 ; Save sector count
+    push bp                 ; Save chunk count
+    push cx                 ; Save sectors per chunk
     push dx                 ; Save current sector
-    
-    ; Read one sector at a time for reliability
+
+    ; Read multiple sectors at once for speed
     mov ah, 0x02            ; Read sectors function
-    mov al, 1               ; Read 1 sector
+    mov al, cl              ; Read multiple sectors
     mov ch, 0               ; Cylinder 0
     mov cl, dl              ; Current sector
     mov dh, 0               ; Head 0
     mov dl, [boot_drive]    ; Drive
     int 0x13
-    
+
     jc read_error
-    
-    ; Move to next sector
+
+    ; Move to next chunk
     pop dx                  ; Restore current sector
-    pop cx                  ; Restore sector count
-    inc dx                  ; Next sector
-    add bx, 512             ; Next memory location
-    loop read_loop
-    
-    ; Verify we actually read something
+    pop cx                  ; Restore sectors per chunk
+    pop bp                  ; Restore chunk count
+
+    add dx, cx              ; Next sector = current + sectors read
+    mov ax, cx              ; Calculate bytes read
+    mov cl, 9               ; Multiply by 512 (shift left 9 bits)
+    shl ax, cl
+    add bx, ax              ; Next memory location
+
+    dec bp                  ; Decrement chunk count
+    jnz read_loop           ; Continue if more chunks
+
+    ; Quick kernel verification
     mov bx, KERNEL_OFFSET
     cmp word [bx], 0
-    je disk_error           ; If first word is 0, kernel probably wasn't loaded
+    je read_error           ; If first word is 0, kernel probably wasn't loaded
     jmp switch_to_32bit
 
 read_error:
-    pop dx                  ; Clean stack
-    pop cx
-    jmp disk_error
+    ; Simple error - just halt, no retry to avoid delays
+    mov si, disk_error_msg
+    call print_string
+    cli
+    hlt
 
 switch_to_32bit:
     cli
     lgdt [gdt_descriptor]
-    
+
     mov eax, cr0
     or eax, 1
     mov cr0, eax
-    
+
     jmp CODE_SEG:init_32bit
-
-disk_error:
-    mov si, disk_error_msg
-    call print_string
-    
-    ; Show specific error code
-    mov si, error_code_msg
-    call print_string
-    mov al, ah      ; AH contains BIOS error code
-    call print_hex_byte
-    
-    ; Wait for keypress
-    mov ah, 0x00
-    int 0x16
-    
-    ; Retry loading
-    jmp load_kernel
-
-print_hex_byte:
-    push ax
-    shr al, 4
-    call print_hex_digit
-    pop ax
-    and al, 0x0F
-    call print_hex_digit
-    ret
-
-print_hex_digit:
-    cmp al, 9
-    jle .digit
-    add al, 7
-.digit:
-    add al, '0'
-    mov ah, 0x0E
-    int 0x10
-    ret
 
 print_string:
     lodsb
@@ -129,10 +96,10 @@ init_32bit:
     mov es, ax
     mov fs, ax
     mov gs, ax
-    
+
     mov ebp, 0x90000
     mov esp, ebp
-    
+
     jmp KERNEL_OFFSET
 
 gdt_start:
@@ -165,8 +132,7 @@ CODE_SEG equ gdt_code - gdt_start
 DATA_SEG equ gdt_data - gdt_start
 
 boot_drive db 0
-disk_error_msg db 'Disk read error! Press any key to retry...', 13, 10, 0
-error_code_msg db 'Error code: ', 0
+disk_error_msg db 'Disk read error!', 13, 10, 0
 
 times 510 - ($ - $$) db 0
 dw 0xAA55

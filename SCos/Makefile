@@ -29,7 +29,7 @@ all: scos.bin
 scos.bin: bootloader.bin kernel.bin
 	# Pad kernel to ensure it's properly sized
 	cp kernel.bin kernel_padded.bin
-	truncate -s 25600 kernel_padded.bin  # Pad to 25KB (50 sectors * 512 bytes)
+	truncate -s 12288 kernel_padded.bin  # Pad to 12KB (24 sectors * 512 bytes)
 	cat bootloader.bin kernel_padded.bin > scos.bin
 	rm kernel_padded.bin
 
