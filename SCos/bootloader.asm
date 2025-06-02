@@ -48,13 +48,13 @@ switch_to_32bit:
     cli
     lgdt [gdt_descriptor]
     
-    ; Clear interrupts and flush prefetch queue
+    ; Enable protected mode
     mov eax, cr0
     or eax, 0x1
     mov cr0, eax
     
-    ; Far jump to reload CS with new GDT
-    jmp CODE_SEG:init_32bit
+    ; Far jump to flush prefetch queue and load CS
+    jmp dword CODE_SEG:init_32bit
 
 read_error:
     mov si, error_msg
@@ -101,29 +101,29 @@ init_32bit:
     ; Jump to kernel entry point
     jmp KERNEL_OFFSET
 
-; Align GDT on word boundary
-align 4
+; GDT must be aligned properly
+align 8
 gdt_start:
     ; Null descriptor
     dd 0x0, 0x0
 
 gdt_code:
     ; Code segment: base=0, limit=4GB, executable, readable
-    dw 0xFFFF    ; limit low
-    dw 0x0000    ; base low
-    db 0x00      ; base middle
-    db 10011010b ; access (present, ring 0, code, executable, readable)
-    db 11001111b ; flags (4KB pages, 32-bit) + limit high
-    db 0x00      ; base high
+    dw 0xFFFF    ; limit low (0-15)
+    dw 0x0000    ; base low (0-15)
+    db 0x00      ; base middle (16-23)
+    db 10011010b ; access byte: present, ring 0, code, executable, readable
+    db 11001111b ; flags (4KB granularity, 32-bit) + limit high (16-19)
+    db 0x00      ; base high (24-31)
 
 gdt_data:
     ; Data segment: base=0, limit=4GB, writable
-    dw 0xFFFF    ; limit low
-    dw 0x0000    ; base low
-    db 0x00      ; base middle
-    db 10010010b ; access (present, ring 0, data, writable)
-    db 11001111b ; flags (4KB pages, 32-bit) + limit high
-    db 0x00      ; base high
+    dw 0xFFFF    ; limit low (0-15)
+    dw 0x0000    ; base low (0-15)
+    db 0x00      ; base middle (16-23)
+    db 10010010b ; access byte: present, ring 0, data, writable
+    db 11001111b ; flags (4KB granularity, 32-bit) + limit high (16-19)
+    db 0x00      ; base high (24-31)
 
 gdt_end:
 
