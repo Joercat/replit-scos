@@ -124,12 +124,28 @@ hang:
 
 switch_to_32bit:
     cli
+    
+    ; Show pre-GDT message
+    mov si, loading_gdt_msg
+    call print_string
+    
+    ; Load GDT
     lgdt [gdt_descriptor]
+    
+    ; Show GDT loaded
+    mov si, gdt_loaded_msg
+    call print_string
 
+    ; Enable protected mode
     mov eax, cr0
     or eax, 1
     mov cr0, eax
 
+    ; Show entering protected mode
+    mov si, entering_pm_msg
+    call print_string
+
+    ; Far jump to flush instruction pipeline and enter 32-bit mode
     jmp CODE_SEG:init_32bit
 
 print_string:
@@ -144,6 +160,7 @@ done:
 
 [BITS 32]
 init_32bit:
+    ; Set up segment registers
     mov ax, DATA_SEG
     mov ds, ax
     mov ss, ax
@@ -151,36 +168,59 @@ init_32bit:
     mov fs, ax
     mov gs, ax
 
+    ; Set up stack - use a safer location
     mov ebp, 0x90000
     mov esp, ebp
 
+    ; Write success message directly to video memory in 32-bit mode
+    mov edi, 0xB8000
+    mov esi, pm_success_msg_32
+    mov ah, 0x0F  ; White on black
+write_loop:
+    lodsb
+    test al, al
+    jz jump_kernel
+    stosb
+    mov al, ah
+    stosb
+    jmp write_loop
+
+jump_kernel:
+    ; Jump to kernel
     jmp KERNEL_OFFSET
 
+pm_success_msg_32 db '32-bit mode active! Jumping to kernel...', 0
+
+; Align GDT to 4-byte boundary
+align 4
 gdt_start:
+    ; Null descriptor
     dd 0x0
     dd 0x0
 
 gdt_code:
-    dw 0xFFFF
-    dw 0x0
-    db 0x0
-    db 10011010b
-    db 11001111b
-    db 0x0
+    ; Code segment: base=0, limit=4GB, 32-bit, executable, readable
+    dw 0xFFFF       ; Limit low
+    dw 0x0000       ; Base low
+    db 0x00         ; Base middle
+    db 10011010b    ; Access byte: present, ring 0, code, executable, readable
+    db 11001111b    ; Flags: 4KB granularity, 32-bit, limit high
+    db 0x00         ; Base high
 
 gdt_data:
-    dw 0xFFFF
-    dw 0x0
-    db 0x0
-    db 10010010b
-    db 11001111b
-    db 0x0
+    ; Data segment: base=0, limit=4GB, 32-bit, writable
+    dw 0xFFFF       ; Limit low
+    dw 0x0000       ; Base low
+    db 0x00         ; Base middle
+    db 10010010b    ; Access byte: present, ring 0, data, writable
+    db 11001111b    ; Flags: 4KB granularity, 32-bit, limit high
+    db 0x00         ; Base high
 
 gdt_end:
 
 gdt_descriptor:
-    dw gdt_end - gdt_start - 1
-    dd gdt_start
+    dw gdt_end - gdt_start - 1  ; Size
+    dd gdt_start                ; Offset
 
 CODE_SEG equ gdt_code - gdt_start
 DATA_SEG equ gdt_data - gdt_start
@@ -195,6 +235,9 @@ sector_ok_msg db 'OK', 13, 10, 0
 sector_fail_msg db 'Sector read failed!', 13, 10, 0
 all_loaded_msg db 'Kernel loaded!', 13, 10, 0
 switch_msg db 'Switching to 32-bit...', 13, 10, 0
+loading_gdt_msg db 'Loading GDT...', 13, 10, 0
+gdt_loaded_msg db 'GDT loaded!', 13, 10, 0
+entering_pm_msg db 'Entering protected mode...', 13, 10, 0
 disk_error_msg db 'FATAL: Disk error!', 13, 10, 0
 
 times 510 - ($ - $$) db 0
