@@ -240,5 +240,5 @@ gdt_loaded_msg db 'GDT loaded!', 13, 10, 0
 entering_pm_msg db 'Entering protected mode...', 13, 10, 0
 disk_error_msg db 'FATAL: Disk error!', 13, 10, 0
 
-times 510 - ($ - $$) db 0
+times 1280 - ($ - $$) db 0
 dw 0xAA55
