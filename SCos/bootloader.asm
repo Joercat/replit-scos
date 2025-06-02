@@ -79,12 +79,37 @@ disk_error:
     mov si, disk_error_msg
     call print_string
     
+    ; Show specific error code
+    mov si, error_code_msg
+    call print_string
+    mov al, ah      ; AH contains BIOS error code
+    call print_hex_byte
+    
     ; Wait for keypress
     mov ah, 0x00
     int 0x16
     
     ; Retry loading
     jmp load_kernel
+
+print_hex_byte:
+    push ax
+    shr al, 4
+    call print_hex_digit
+    pop ax
+    and al, 0x0F
+    call print_hex_digit
+    ret
+
+print_hex_digit:
+    cmp al, 9
+    jle .digit
+    add al, 7
+.digit:
+    add al, '0'
+    mov ah, 0x0E
+    int 0x10
+    ret
 
 print_string:
     lodsb
@@ -140,7 +165,8 @@ CODE_SEG equ gdt_code - gdt_start
 DATA_SEG equ gdt_data - gdt_start
 
 boot_drive db 0
-disk_error_msg db 'Disk read error! Press any key to retry...', 0
+disk_error_msg db 'Disk read error! Press any key to retry...', 13, 10, 0
+error_code_msg db 'Error code: ', 0
 
 times 510 - ($ - $$) db 0
 dw 0xAA55
