@@ -1,4 +1,3 @@
-
 [ORG 0x7C00]
 [BITS 16]
 
@@ -100,7 +99,7 @@ read_success:
     mov bx, KERNEL_OFFSET
     cmp word [bx], 0
     je read_error           ; If first word is 0, kernel probably wasn't loaded
-    
+
     ; Show switching to 32-bit
     mov si, switch_msg
     call print_string
@@ -117,36 +116,18 @@ read_error:
     call print_string
     jmp hang
 
-hang:
-    cli
-    hlt
-    jmp hang                ; Infinite loop in case of NMI
-
 switch_to_32bit:
     cli
-    
-    ; Show pre-GDT message
-    mov si, loading_gdt_msg
-    call print_string
-    
-    ; Load GDT
     lgdt [gdt_descriptor]
-    
-    ; Show GDT loaded
-    mov si, gdt_loaded_msg
-    call print_string
-
-    ; Enable protected mode
     mov eax, cr0
     or eax, 1
     mov cr0, eax
-
-    ; Show entering protected mode
-    mov si, entering_pm_msg
-    call print_string
-
-    ; Far jump to flush instruction pipeline and enter 32-bit mode
     jmp CODE_SEG:init_32bit
+
+hang:
+    cli
+    hlt
+    jmp hang
 
 print_string:
     lodsb
