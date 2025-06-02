@@ -40,6 +40,10 @@ read_loop:
     mov si, loaded_msg
     call print_string
 
+    ; Debug message before 32-bit switch
+    mov si, debug_32bit_msg
+    call print_string
+
 switch_to_32bit:
     cli
     lgdt [gdt_descriptor]
@@ -89,6 +93,11 @@ init_32bit:
     ; Clear direction flag
     cld
     
+    ; Display "32" on screen to confirm 32-bit mode entry
+    mov edi, 0xB8000
+    mov eax, 0x0F330F32  ; "32" in white on black
+    mov [edi], eax
+    
     ; Jump to kernel entry point
     jmp KERNEL_OFFSET
 
@@ -128,6 +137,7 @@ DATA_SEG equ gdt_data - gdt_start
 boot_drive db 0
 boot_msg db 'SCos Boot', 13, 10, 0
 loaded_msg db 'Kernel OK', 13, 10, 0
+debug_32bit_msg db 'Switching to 32-bit...', 13, 10, 0
 error_msg db 'Boot Error', 13, 10, 0
 
 times 510 - ($ - $$) db 0
