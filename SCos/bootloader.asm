@@ -17,50 +17,65 @@ load_kernel:
     ; Save boot drive number that BIOS gave us
     mov [boot_drive], dl
 
-    ; Load kernel in larger chunks - read 8 sectors at once
+    ; Reset disk system first
+    mov ah, 0x00
+    mov dl, [boot_drive]
+    int 0x13
+
+    ; Load kernel one sector at a time for reliability
     mov bx, KERNEL_OFFSET   ; Load address
-    mov cx, 8               ; Read 8 sectors at a time (4KB chunks)
-    mov dx, 2               ; Starting sector
-    mov bp, 3               ; Total chunks to read (24 sectors = 12KB)
+    mov cx, 2               ; Starting sector (sector 2)
+    mov bp, 24              ; Total sectors to read (12KB)
 
 read_loop:
-    push bp                 ; Save chunk count
-    push cx                 ; Save sectors per chunk
-    push dx                 ; Save current sector
+    push bp                 ; Save sector count
+    push cx                 ; Save current sector
+    push bx                 ; Save current memory address
 
-    ; Read multiple sectors at once for speed
+    ; Try reading with retry
+    mov di, 3               ; Retry count
+
+retry_read:
     mov ah, 0x02            ; Read sectors function
-    mov al, cl              ; Read multiple sectors
+    mov al, 1               ; Read 1 sector at a time
     mov ch, 0               ; Cylinder 0
-    mov cl, dl              ; Current sector
+    mov cl, [esp + 2]       ; Current sector from stack
     mov dh, 0               ; Head 0
     mov dl, [boot_drive]    ; Drive
     int 0x13
 
-    jc read_error
+    jnc read_success        ; Jump if no carry (success)
 
-    ; Move to next chunk
-    pop dx                  ; Restore current sector
-    pop cx                  ; Restore sectors per chunk
-    pop bp                  ; Restore chunk count
+    ; Reset disk and retry
+    mov ah, 0x00
+    mov dl, [boot_drive]
+    int 0x13
 
-    add dx, cx              ; Next sector = current + sectors read
-    mov ax, cx              ; Calculate bytes read
-    mov cl, 9               ; Multiply by 512 (shift left 9 bits)
-    shl ax, cl
-    add bx, ax              ; Next memory location
+    dec di
+    jnz retry_read          ; Retry if count > 0
 
-    dec bp                  ; Decrement chunk count
-    jnz read_loop           ; Continue if more chunks
+    ; All retries failed
+    add esp, 6              ; Clean up stack
+    jmp read_error
 
-    ; Quick kernel verification
+read_success:
+    pop bx                  ; Restore memory address
+    pop cx                  ; Restore current sector
+    pop bp                  ; Restore sector count
+
+    add bx, 512             ; Next memory location (512 bytes per sector)
+    inc cx                  ; Next sector
+    dec bp                  ; Decrement sector count
+    jnz read_loop           ; Continue if more sectors
+
+    ; Verify kernel was loaded
     mov bx, KERNEL_OFFSET
     cmp word [bx], 0
     je read_error           ; If first word is 0, kernel probably wasn't loaded
     jmp switch_to_32bit
 
 read_error:
-    ; Simple error - just halt, no retry to avoid delays
+    ; Display error and halt
     mov si, disk_error_msg
     call print_string
     cli
