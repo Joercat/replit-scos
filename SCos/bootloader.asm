@@ -1,6 +1,4 @@
-` tags. I should pay close attention to preserving the original structure and indentation while incorporating all the changes from the edited snippet.
 
-```assembly
 [ORG 0x7C00]
 [BITS 16]
 
