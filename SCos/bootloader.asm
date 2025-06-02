@@ -1,3 +1,4 @@
+
 [ORG 0x7C00]
 [BITS 16]
 
@@ -12,6 +13,10 @@ start:
     mov sp, 0x7C00
     sti
     mov [boot_drive], dl
+
+    ; Show boot message
+    mov si, boot_msg
+    call print_string
 
 load_kernel:
     mov bx, KERNEL_OFFSET
@@ -32,6 +37,9 @@ read_loop:
     dec bp
     jnz read_loop
 
+    mov si, loaded_msg
+    call print_string
+
 switch_to_32bit:
     cli
     lgdt [gdt_descriptor]
@@ -41,7 +49,24 @@ switch_to_32bit:
     jmp CODE_SEG:init_32bit
 
 read_error:
-    jmp read_error
+    mov si, error_msg
+    call print_string
+    jmp hang
+
+hang:
+    cli
+    hlt
+    jmp hang
+
+print_string:
+    lodsb
+    or al, al
+    jz done
+    mov ah, 0x0E
+    int 0x10
+    jmp print_string
+done:
+    ret
 
 [BITS 32]
 init_32bit:
@@ -76,6 +101,9 @@ CODE_SEG equ gdt_code - gdt_start
 DATA_SEG equ gdt_data - gdt_start
 
 boot_drive db 0
+boot_msg db 'SCos Boot', 13, 10, 0
+loaded_msg db 'Kernel OK', 13, 10, 0
+error_msg db 'Boot Error', 13, 10, 0
 
 times 510 - ($ - $$) db 0
 dw 0xAA55
