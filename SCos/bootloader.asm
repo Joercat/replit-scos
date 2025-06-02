@@ -226,19 +226,19 @@ CODE_SEG equ gdt_code - gdt_start
 DATA_SEG equ gdt_data - gdt_start
 
 boot_drive db 0
-boot_msg db 'Booting SCos...', 13, 10, 0
-reset_ok_msg db 'Disk reset OK', 13, 10, 0
-reset_error_msg db 'Disk reset failed!', 13, 10, 0
-reading_msg db 'Reading sector...', 13, 10, 0
-retry_msg db 'Retry...', 13, 10, 0
-sector_ok_msg db 'OK', 13, 10, 0
-sector_fail_msg db 'Sector read failed!', 13, 10, 0
-all_loaded_msg db 'Kernel loaded!', 13, 10, 0
-switch_msg db 'Switching to 32-bit...', 13, 10, 0
-loading_gdt_msg db 'Loading GDT...', 13, 10, 0
-gdt_loaded_msg db 'GDT loaded!', 13, 10, 0
-entering_pm_msg db 'Entering protected mode...', 13, 10, 0
-disk_error_msg db 'FATAL: Disk error!', 13, 10, 0
+boot_msg db 'SCos', 13, 10, 0
+reset_ok_msg db 'OK', 13, 10, 0
+reset_error_msg db 'ERR', 13, 10, 0
+reading_msg db '.', 0
+retry_msg db 'R', 0
+sector_ok_msg db 'K', 0
+sector_fail_msg db 'F', 0
+all_loaded_msg db 'L', 13, 10, 0
+switch_msg db '32', 13, 10, 0
+loading_gdt_msg db 'G', 0
+gdt_loaded_msg db 'D', 0
+entering_pm_msg db 'P', 0
+disk_error_msg db 'FATAL', 13, 10, 0
 
 times 512 - ($ - $$) db 0
 dw 0xAA55
