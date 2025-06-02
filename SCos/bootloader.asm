@@ -39,7 +39,8 @@ retry_read:
     mov ah, 0x02            ; Read sectors function
     mov al, 1               ; Read 1 sector at a time
     mov ch, 0               ; Cylinder 0
-    mov cl, [sp + 2]        ; Current sector from stack (use sp in 16-bit mode)
+    mov bp, sp              ; Set up base pointer to access stack
+    mov cl, [bp + 2]        ; Current sector from stack
     mov dh, 0               ; Head 0
     mov dl, [boot_drive]    ; Drive
     int 0x13
@@ -55,7 +56,7 @@ retry_read:
     jnz retry_read          ; Retry if count > 0
 
     ; All retries failed
-    add sp, 6               ; Clean up stack (use sp in 16-bit mode)
+    add sp, 6               ; Clean up stack
     jmp read_error
 
 read_success:
